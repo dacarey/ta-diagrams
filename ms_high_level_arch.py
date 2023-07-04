@@ -23,6 +23,7 @@ from diagrams.aws.database import Dynamodb
 from diagrams.aws.security import (
     Cognito as Curity,
     IdentityAndAccessManagementIamLongTermSecurityCredential as Authorizer,
+    SecretsManager
 )
 
 from diagrams.aws.business import BusinessApplications as BusinessApplication
@@ -49,7 +50,7 @@ with Diagram(
             #  routes
             curity >> scm_api
 
-    with Cluster("Other Services"):
+    with Cluster("Service Integration"):
         eventbridge_suite = Cluster("Event Bridge\nMessaging")
         with eventbridge_suite:
             event_bridge = Eventbridge("Event Bridge\nService")
@@ -65,7 +66,7 @@ with Diagram(
 
 
     with Cluster("AWS Micro Service"):
-        api_gateway = Cluster("api.directwines.com")
+        api_gateway = Cluster("API Gateway")
 
         with api_gateway:
             me_api = APIGateway("ME\nendpoints")
@@ -79,14 +80,17 @@ with Diagram(
             stateless_api >> Edge(xlabel="Authorise\nToken", style="dashed") >> authorizer
             me_api >> Edge(xlabel="Authorise\nToken", style="dashed") >> authorizer
 
-        with Cluster("Service"):
+        micro_service = Cluster("Service")
+        with micro_service:
             service_impl = Lambda("Service\nImplementation")
             dynamodb_storage = Dynamodb("Dynamo DB\nStorage")
+            secrets_manager = SecretsManager("Secrets\nManager")
 
-            service = [service_impl, dynamodb_storage]
+            service = [service_impl, dynamodb_storage, secrets_manager]
 
             #  routes
             api_groups >> service_impl >> dynamodb_storage
+            service_impl - Edge(xlabel="secrets", style="dashed") - secrets_manager
             dynamodb_storage >> Edge(label="Fire\nEvents", style="dashed") >> event_bridge
 
     #  routes

@@ -18,8 +18,6 @@ from diagrams.aws.compute import Lambda
 
 from diagrams.aws.network import APIGateway, APIGatewayEndpoint
 
-from diagrams.aws.database import Dynamodb
-
 from diagrams.aws.security import (
     Cognito as Curity,
     IdentityAndAccessManagementIamLongTermSecurityCredential as Authorizer,
@@ -30,14 +28,16 @@ from diagrams.aws.business import BusinessApplications as BusinessApplication
 
 from diagrams.custom import Custom
 
-from diagrams.aws.integration import Eventbridge
+from diagrams.aws.integration import Eventbridge, StepFunctions
 
 
 with Diagram(
-    "Micro Service - High Level Architecture", filename="ms_high_level_arch", show=True
+    "Cart Service - High Level Architecture", 
+    filename="cart_microservice_highlevel_arch",
+    show=False
 ):
     with Cluster("Applications"):
-        netlify_website = Custom("Website", "./resources/netlify_logo.png")
+        netlify_website = Custom("Website", "./resources/netlify-logo.png")
 
         grapevine = BusinessApplication("Grapevine")
 
@@ -54,6 +54,10 @@ with Diagram(
         eventbridge_suite = Cluster("Event Bridge\nMessaging")
         with eventbridge_suite:
             event_bridge = Eventbridge("Event Bridge\nService")
+
+        dependent_apis = Cluster("Dependent\nAPIs")
+        with dependent_apis:
+            product_api = APIGatewayEndpoint("Product API")
 
     with Cluster("Website API Support"):
         webapi_suite = Cluster("webapi")
@@ -80,19 +84,27 @@ with Diagram(
             stateless_api >> Edge(xlabel="Authorise\nToken", style="dashed") >> authorizer
             me_api >> Edge(xlabel="Authorise\nToken", style="dashed") >> authorizer
 
-        micro_service = Cluster("Service")
+        micro_service = Cluster("Core Commerce Proxy Micro Service")
         with micro_service:
             service_impl = Lambda("Service\nImplementation")
-            dynamodb_storage = Dynamodb("Dynamo DB\nStorage")
             secrets_manager = SecretsManager("Secrets\nManager")
+            step_functions = StepFunctions("Express Workflow\nStep Functions")
 
-            service = [service_impl, dynamodb_storage, secrets_manager]
+            service = [service_impl, step_functions, secrets_manager]
 
             #  routes
-            api_groups >> service_impl >> dynamodb_storage
+            api_groups >> service_impl
             service_impl - Edge(xlabel="secrets", style="dashed") - secrets_manager
-            dynamodb_storage >> Edge(label="Fire\nEvents", style="dashed") >> event_bridge
+            service_impl - Edge(label="pipeline validations", style="dashed") - step_functions
+            step_functions - Edge(xlabel="calls", style="dashed") - product_api
+
+    with Cluster("Commerce Tools SAAS"):
+        ct_service = Cluster("Commerce Tools")
+        with ct_service:
+            ct = Custom("CommerceTools", "./resources/commercetools-logo.png")
 
     #  routes
     netlify_website >> webapi >> me_api
     grapevine >> stateless_api
+    service_impl >> ct
+    ct >> Edge(label="Fire\nEvents", style="dashed") >> event_bridge

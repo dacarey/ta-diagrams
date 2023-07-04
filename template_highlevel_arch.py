@@ -34,10 +34,12 @@ from diagrams.aws.integration import Eventbridge
 
 
 with Diagram(
-    "Micro Service - High Level Architecture", filename="ms_high_level_arch", show=True
+    "Micro Service - High Level Architecture",
+    filename="template_highlevel_arch",
+    show=True
 ):
     with Cluster("Applications"):
-        netlify_website = Custom("Website", "./resources/netlify_logo.png")
+        netlify_website = Custom("Website", "./resources/netlify-logo.png")
 
         grapevine = BusinessApplication("Grapevine")
 
